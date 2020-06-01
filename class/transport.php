@@ -117,8 +117,8 @@ if (!class_exists('CS_REST_CurlTransport')) {
                 } elseif (array_key_exists('api_key', $call_options['authdetails'])) {
                     # Authenticating using an API key.
                     curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-                    $api_key = $call_options['authdetails']['api_key'];
-                    curl_setopt($ch, CURLOPT_USERPWD, $api_key.':nopass');
+                    $_cred = $call_options['authdetails']['api_key'];
+                    curl_setopt($ch, CURLOPT_USERPWD, $_cred.':nopass');
                 }
             }
 
