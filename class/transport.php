@@ -118,7 +118,7 @@ if (!class_exists('CS_REST_CurlTransport')) {
                     # Authenticating using an API key.
                     curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
                     $_cred = $call_options['authdetails']['api_key'];
-                    curl_setopt($ch, CURLOPT_USERPWD, $_cred.':nopass');
+                    curl_setopt($ch, CURLOPT_USERPWD, $_cred.':nopss');
                 }
             }
 
@@ -323,7 +323,7 @@ if (!class_exists('CS_REST_SocketTransport')) {
                 } elseif (array_key_exists('api_key', $call_options['authdetails'])) {
                     # Authenticating using an API key.
                     $api_key = $call_options['authdetails']['api_key'];
-                    $request_auth_details .= 'Authorization: Basic '.base64_encode($api_key.':nopass')."\n";
+                    $request_auth_details .= 'Authorization: Basic '.base64_encode($api_key.':nopss')."\n";
                 }
             }
 
