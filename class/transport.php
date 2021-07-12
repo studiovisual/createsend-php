@@ -121,7 +121,7 @@ if (!class_exists('CS_REST_CurlTransport')) {
                 } elseif (array_key_exists('api_key', $call_options['authdetails'])) {
                     # Authenticating using an API key.
                     curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-                    curl_setopt($ch, CURLOPT_USERPWD, get_key($call_options));
+                    curl_setopt($ch, CURLOPT_USERPWD, self::get_key($call_options));
                 }
             }
 
