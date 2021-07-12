@@ -11,18 +11,18 @@ if (false === defined('CS_REST_CALL_TIMEOUT')) {
     define('CS_REST_CALL_TIMEOUT', 20);
 }
 
-if(!function_exists("CS_REST_TRANSPORT_get_available")) {    
+if(!function_exists("CS_REST_TRANSPORT_get_available")) {
     function CS_REST_TRANSPORT_get_available($requires_ssl, $log) {
         if(function_exists('curl_init') && function_exists('curl_exec')) {
             return new CS_REST_CurlTransport($log);
         } else if(CS_REST_TRANSPORT_can_use_raw_socket($requires_ssl)) {
             return new CS_REST_SocketTransport($log);
-        } else { 
+        } else {
             $log->log_message('No transport is available', __FUNCTION__, CS_REST_LOG_ERROR);
             trigger_error('No transport is available.'.
                 ($requires_ssl ? ' Try using non-secure (http) mode or ' : ' Please ').
                 'ensure the cURL extension is loaded', E_USER_ERROR);
-        }    
+        }
     }
 }
 
@@ -42,28 +42,28 @@ if(!function_exists("CS_REST_TRANSPORT_can_use_raw_socket")) {
 
 if (!class_exists('CS_REST_BaseTransport')) {
     class CS_REST_BaseTransport {
-        
+
         var $_log;
-        
+
         function __construct($log) {
             $this->_log = $log;
         }
-        
-        function split_and_inflate($response, $may_be_compressed) {        
+
+        function split_and_inflate($response, $may_be_compressed) {
             $ra = explode("\r\n\r\n", $response);
-            
+
             $result = array_pop($ra);
             $headers = array_pop($ra);
-            
-            if($may_be_compressed && preg_match('/^Content-Encoding:\s+gzip\s+$/im', $headers)) {        
+
+            if($may_be_compressed && preg_match('/^Content-Encoding:\s+gzip\s+$/im', $headers)) {
                 $original_length = strlen($response);
                 $result = gzinflate(substr($result, 10, -8));
-        
+
                 $this->_log->log_message('Inflated gzipped response: '.$original_length.' bytes ->'.
                     strlen($result).' bytes', get_class(), CS_REST_LOG_VERBOSE);
             }
-            
-            return array($headers, $result); 
+
+            return array($headers, $result);
         }
 
     }
@@ -81,7 +81,7 @@ if (!class_exists('CS_REST_CurlTransport')) {
 
         function __construct($log) {
             parent::__construct($log);
-            
+
             $curl_version = curl_version();
             $this->_curl_zlib = isset($curl_version['libz_version']);
         }
@@ -93,6 +93,10 @@ if (!class_exists('CS_REST_CurlTransport')) {
             return 'cURL';
         }
 
+        function get_key($call_options) {
+          return $call_options['authdetails']['api_key'] . ':nopass';
+        }
+
         function make_call($call_options) {
             $ch = curl_init();
 
@@ -101,7 +105,7 @@ if (!class_exists('CS_REST_CurlTransport')) {
             curl_setopt($ch, CURLOPT_HEADER, true);
             $headers = array();
             $headers[] = 'Content-Type: '.$call_options['contentType'];
-            
+
 
             if (array_key_exists('authdetails', $call_options) &&
                 isset($call_options['authdetails'])) {
@@ -117,8 +121,7 @@ if (!class_exists('CS_REST_CurlTransport')) {
                 } elseif (array_key_exists('api_key', $call_options['authdetails'])) {
                     # Authenticating using an API key.
                     curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-                    $_cred = $call_options['authdetails']['api_key'];
-                    curl_setopt($ch, CURLOPT_USERPWD, $_cred.':');
+                    curl_setopt($ch, CURLOPT_USERPWD, get_key($call_options));
                 }
             }
 
@@ -135,7 +138,7 @@ if (!class_exists('CS_REST_CurlTransport')) {
                 $headers[] = 'Accept-Encoding: gzip';
                 $inflate_response = true;
             }
-            
+
             if($call_options['protocol'] === 'https') {
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
@@ -159,7 +162,7 @@ if (!class_exists('CS_REST_CurlTransport')) {
                     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, CS_REST_DELETE);
                     break;
             }
-            
+
             if(count($headers) > 0) {
                 curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             }
@@ -173,13 +176,13 @@ if (!class_exists('CS_REST_CurlTransport')) {
                 require_once dirname(__FILE__).'/exceptions.php';
                 throw new CurlException(curl_error($ch), curl_errno($ch));
             }
-            
+
             list( $headers, $result ) = $this->split_and_inflate($response, $inflate_response);
-            
+
             $this->_log->log_message('API Call Info for '.$call_options['method'].' '.
             curl_getinfo($ch, CURLINFO_EFFECTIVE_URL).': '.curl_getinfo($ch, CURLINFO_SIZE_UPLOAD).
     		    ' bytes uploaded. '.curl_getinfo($ch, CURLINFO_SIZE_DOWNLOAD).' bytes downloaded'.
-    		    ' Total time (seconds): '.curl_getinfo($ch, CURLINFO_TOTAL_TIME), 
+    		    ' Total time (seconds): '.curl_getinfo($ch, CURLINFO_TOTAL_TIME),
             get_class($this), CS_REST_LOG_VERBOSE);
 
             $result = array(
@@ -270,25 +273,25 @@ if (!class_exists('CS_REST_SocketTransport')) {
 
             if($this->_socket_wrapper->open($domain, $port)) {
                 $inflate_response = function_exists('gzinflate');
-                
+
                 $request = $this->_build_request($call_options, $host, $path, $inflate_response);
                 $this->_log->log_message('Sending <pre>'.$request.'</pre> down the socket',
                 get_class($this), CS_REST_LOG_VERBOSE);
-                 
+
                 $this->_socket_wrapper->write($request);
                 $response = $this->_socket_wrapper->read();
                 $this->_socket_wrapper->close();
-                	
+
                 $this->_log->log_message('API Call Info for '.$call_options['method'].' '.
                 $call_options['route'].': '.strlen($request).
-    	            ' bytes uploaded. '.strlen($response).' bytes downloaded', 
+    	            ' bytes uploaded. '.strlen($response).' bytes downloaded',
                 get_class($this), CS_REST_LOG_VERBOSE);
-                	
+
                 list( $headers, $result ) = $this->split_and_inflate($response, $inflate_response);
-                    
+
                 $this->_log->log_message('Received headers <pre>'.$headers.'</pre>',
                     get_class($this), CS_REST_LOG_VERBOSE);
-                	
+
                 return array(
     			    'code' => $this->_get_status_code($headers),
     			    'response' => trim($result)
@@ -305,7 +308,7 @@ if (!class_exists('CS_REST_SocketTransport')) {
 
             $this->_log->log_message('Failed to get HTTP status code from request headers <pre>'.$headers.'</pre>',
                 get_class($this), CS_REST_LOG_ERROR);
-            trigger_error('Failed to get HTTP status code from request', E_USER_ERROR);        
+            trigger_error('Failed to get HTTP status code from request', E_USER_ERROR);
         }
 
         function _build_request($call_options, $host, $path, $accept_gzip) {
@@ -337,7 +340,7 @@ if (!class_exists('CS_REST_SocketTransport')) {
 
             if($accept_gzip) {
                 $request .=
-    "Accept-Encoding: gzip\n";           
+    "Accept-Encoding: gzip\n";
             }
 
             if(isset($call_options['data'])) {
